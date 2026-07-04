@@ -81,7 +81,7 @@ if((Math.mod(y,4)==0 && Math.mod(y,100)!=0)||Math.mod(y,400)==0){
 
 Q-Amount → 'Small' <10000 / 'Medium' 10000–100000 / 'Large' >100000
 Ans-
-integer A= 2021;
+Decimal amount= 2021;
 if(a<10000 && a>0){
     system.debug('Small');
 }else if(a>=10000 && a<=100000){
