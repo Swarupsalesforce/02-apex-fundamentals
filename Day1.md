@@ -98,9 +98,10 @@ ans=
 Decimal amount=100;
 string customerTier='Platinum';
 Decimal discountPercent;
-if(customerTier =='Gold'){
+if(customerTier =='Platinum'){
+    discountPercent=25;
+}else if(customerTier =='Gold'){
     discountPercent=20;
-    
 }else if(customerTier =='Silver'){
     discountPercent=10;
 }else if(customerTier =='Bronze'){
