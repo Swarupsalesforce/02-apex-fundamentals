@@ -1,0 +1,112 @@
+//Revamp of Day 1 Final assignment
+Decimal amount=25;
+Decimal amountAfterDiscount;
+Decimal discountAmount;
+string customerTier='Diamond';
+Decimal discountPercent;
+if(customerTier =='Platinum'){
+    discountPercent=25;
+}else if(customerTier =='Gold'){
+    discountPercent=20;
+}else if(customerTier =='Silver'){
+    discountPercent=10;
+}else if(customerTier =='Bronze'){
+    discountPercent =5;
+}else{
+    system.debug('Put Valid Tier');
+    discountPercent=0;
+}
+discountAmount= amount*(discountPercent/100);
+    amountAfterDiscount=amount-discountAmount;
+System.debug('Tier: '+ customerTier +' , Discount: ' + discountPercent + '%' +', Amount after Discount '+ amountAfterDiscount);
+
+// Problem -1 -Print numbers 1 to 10
+for(integer i=1; i<=10; i++){
+    System.debug(i);
+}
+
+// Problem - 2Print only even numbers from 1 to 20 (two ways if you can: step by 2, or check Math.mod inside)
+for(integer i=1; i<=20; i++){
+    if(Math.mod(i,2)==0){
+        System.debug(i);
+    }
+
+}
+//Problem 3-Sum all numbers 1 to 100 
+integer sum=0;
+for(integer i=1; i<=100; i++){
+   sum=sum+i;
+
+}System.debug(sum);
+
+//Probelm 4-Print the multiplication table of 7
+integer num=7;
+for(integer i=1; i<=10; i++){
+    integer mul =num*i;
+   System.debug(num +' * '+ i +' = '+mul);
+}
+
+//Probelm 5-Count down from 10 to 1, then print 'Liftoff!'
+integer num=7;
+for(integer i=10; i>=1; i--){
+   System.debug(i);
+}System.debug('Liftoff');
+
+//Problem 6- Sum only the even numbers from 1 to 50
+integer sum=0;
+for(Integer i=1; i<=50; i++){
+    if(Math.mod(i,2)==0){
+        sum=sum+i;
+    }
+}System.debug('Sum of Even Numbers from 1 to 50 = '+ sum);
+
+//Problem 7- Given Integer n = 5; → print its factorial (5×4×3×2×1)
+integer n=5;
+Long factorial=1;
+for(Integer i=n; i>=1; i--){
+    factorial=factorial*i;
+}System.debug('Factorial of '+ n +' = '+ factotrial);
+
+//FizzBuzz — print 1 to 30, but multiples of 3 print 'Fizz', of 5 'Buzz', of both 'FizzBuzz'
+for(Integer i=1; i<=30; i++){
+    if(Math.mod(i,3)==0 && Math.mod(i,5)==0){
+        System.debug('FizzBuzz');
+    }else if(Math.mod(i,3)==0){
+        System.debug('Fizz');
+    }else if(Math.mod(i,5)==0){
+        System.debug('Buzz');
+    }else{
+        System.debug(i);
+    }
+}
+
+//Problem -9- Given a number like 12345 → count its digits WITHOUT converting to String 
+Integer digit =0;
+Integer n=0;
+//check for zero 
+if(n==0){
+    digit=1;
+}else{
+while(n>0){
+n= n /10;
+digit=digit+1;
+}  
+}
+System.debug(digit);
+
+//Problem 10- Print this triangle for n=5 — :
+
+*
+**
+***
+****
+*****
+
+Ans- for(Integer i=1; i<=5; i++){
+    String star='';
+    for(Integer j=1; j<=i; j++){
+        star= star+ '*';
+    }  
+    System.debug(star);
+}
+
