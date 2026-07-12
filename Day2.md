@@ -110,4 +110,38 @@ Ans- for(Integer i=1; i<=5; i++){
     System.debug(star);
 }
 
+Q- Sum of its digits
+Integer sumOfDigit=0;
+Integer n=5;
+Integer r;
+    while(n>0){
+    r=Math.mod(n,10);
+    sumOfDigit=sumOfDigit+r;
+    n=n/10;    
+}
+System.debug(sumOfDigit);
 
+Q-  reverse of Number
+String revNum = '';
+Integer n=12345;
+Integer r;
+    while(n>0){
+    r=Math.mod(n,10);
+    revNum=revNum +r ;
+    n=n/10;    
+}
+System.debug(revNum);
+
+Q- Prime Number
+Integer n=-5;
+Boolean isPrime = true;
+if(n==0||n<=1){
+    isPrime = false;
+}else{
+    for(Integer i=2; i<n; i++){
+        if(Math.mod(n,i)==0){
+        isPrime = false;
+        break;
+        }
+    }
+}System.debug('Prime = '+ isPrime);
