@@ -1,0 +1,99 @@
+Q-1-reverse a string without reverse()
+Ans-
+String names= 'Cat';
+String alpha;
+String reverse='';
+for(Integer i=0; i<names.length();i++){
+    alph=names.substring(i,i+1);
+    aeverse=alph+reverse;
+}
+System.debug(reverse);
+
+Q-2-Given String is Pallindrome or not
+Ans
+String names= 'Madam';
+String alph;
+String reverse='';
+for(Integer i=0; i<names.length();i++){
+    alph=names.substring(i,i+1);
+    reverse=alph+reverse;
+}
+If(names.equalsIgnoreCase(reverse)){
+    System.debug('Palindrome');
+}else{
+    System.debug('Not Palindrome');
+}
+
+Q-3-Count No of Vowels in a String
+Ans
+String name= 'Madaeeioum';
+String singleChar;
+String vowels='aeiou';
+Integer noVow =0;
+for(Integer i=0; i<name.length();i++){
+    singleChar=name.substring(i,i+1);
+    if(vowels.containsIgnoreCase(singleChar)){
+        noVow=noVow+1;
+    }
+}
+System.debug(noVow);
+
+Q-4-Count words in a sentence 
+Ans
+String name= 'Let me take you to Hotel room';
+List<String> splitString= name.split(' ');
+System.debug(splitString.Size());
+
+Q-5-Largest number in List<Integer> 
+Ans
+
+List<Integer> nums= new List<Integer>{12,-23,-2,345,1,32,4,5,6,8};
+    Integer largest=nums.get(0);
+    for(Integer n: nums){
+        if(n>largest){
+            largest=n;
+        }
+    }    
+System.debug(largest);
+
+Q-6- Deduplicate list with out using set
+Ans
+
+List<Integer> nums= new List<Integer>{2,1,2,3,4,1,5,5,6,7,3};
+List<Integer> uniqueNums= new List<Integer>();
+for(Integer n: nums){
+    if(!uniqueNums.contains(n)){
+        uniqueNums.add(n);
+    }
+}
+System.debug(uniqueNums);
+
+Q-7- Find the 2nd Largest in List of integer
+Ans
+List<Integer> nums = new List<Integer>{23, 12, 111, 8, 3, 549};
+
+if (nums.size() >= 2) {                          // EDIT 1: boundary fixed (yours)
+
+    // EDIT 3: honest openers — first two REAL elements, sorted into boxes
+    Integer largest = nums[0];
+    Integer secondLargest = nums[1];
+    if (secondLargest > largest) {               // wrong way round? swap
+        Integer temp = largest;                  // Day 1, problem 1 — the swap, employed at last
+        largest = secondLargest;
+        secondLargest = temp;
+    }
+
+    for (Integer n : nums) {
+        if (n > largest) {
+            secondLargest = largest;             // your transfer — was right since round 3
+            largest = n;
+        } else if (n < largest && n > secondLargest) {
+            secondLargest = n;
+        }
+    }
+    // Duplicates rule: {7,7,3} → second stays 3 (strict >). Ties don't count twice. ← the comment, finally 😄
+    System.debug('Largest ' + largest + ', Second Largest ' + secondLargest);
+
+} else {                                          // EDIT 2: the else — refusal path, prints once
+    System.debug('Need at least 2 numbers for a second-largest');
+}
