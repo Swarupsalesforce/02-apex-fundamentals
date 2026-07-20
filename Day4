@@ -1,0 +1,95 @@
+Q-1-Email Cleaner
+Ans
+List<String> rawEmails = new List<String>{
+    '  Rahul@Gmail.COM ',
+    'priya@yahoo.com',
+    null,
+    'RAHUL@gmail.com',
+    '   ',
+    'amit@outlook.com',
+    'priya@YAHOO.com  ',
+    ''
+};
+    Set<String> cleanedEmails= new Set<String>();
+    for(String email: rawEmails){
+        if(!String.isBlank(email)){
+        String eachEmail=email.trim().toLowerCase();    
+        cleanedEmails.add(eachEmail);
+        }
+       
+    }
+List<String> finalEmails= new List<String>(cleanedEmails);
+finalEmails.sort();
+System.debug(finalEmails);
+
+Q-2-Common Element Between two List, print the number appear in both.
+Ans
+List<Integer> nums1 = new List<Integer>{3, 8, 12, 5, 9};
+List<Integer> nums2 = new List<Integer>{8, 1, 5, 20}; 
+Set<Integer> nums3= new Set<Integer>(nums2);
+Set<Integer> finalNums= new Set<Integer>();
+for(Integer nums: nums1){
+    if(nums3.contains(nums)){
+        finalNums.add(nums);
+    }
+}
+System.debug(finalNums);
+Q-3-In first, not second. Same two lists → print what's ONLY in the first:
+List<Integer> nums1 = new List<Integer>{3, 8, 12, 5, 9};
+List<Integer> nums2 = new List<Integer>{8, 1, 5, 20}; 
+Set<Integer> nums3= new Set<Integer>(nums2);
+Set<Integer> finalNums= new Set<Integer>();
+for(Integer nums: nums1){
+    if(!nums3.contains(nums)){
+        finalNums.add(nums);
+    }
+}
+System.debug(finalNums);
+
+Q-4-Count unique. {4, 7, 4, 2, 7, 7, 9} → print how many DIFFERENT values
+Ans
+List<Integer> nums = new List<Integer>
+{3,8,8,2,3,12,12,5,9,9}; 
+Set<Integer> seen= new Set<Integer>();
+for(Integer n: nums){
+    if(seen.contains(n)){
+        System.debug(n);
+        break;
+    }
+    seen.add(n);
+}
+
+Q-5-Build a Map<String, String> of 5 country codes → capitals (your choice). Then look up TWO codes: one that exists, one that doesn't. The missing one must print Unknown — not null, and no crash.
+Map<String,String> countries= new Map<String,String>();
+countries.put('IN','Delhi');
+countries.put('UAE','Abu Dhabi');
+countries.put('US','New york');
+List<String> codes= new List<String>{'IN','XX','US'};
+    for(String c:codes){
+        if(countries.containsKey(c)){
+            System.debug(c+'->'+countries.get(c));
+        }else{
+             System.debug('Unknown');
+        }
+       
+    }
+
+    Q-6-String 'swiss' → print the first character that appears exactly ONCE in it. Expected:w
+    ANS
+    String s ='swiss';
+List<String> characters= s.split('');
+Map<String,Integer> counts= new Map<String,Integer>();
+for(String chars: characters){
+    if(counts.containsKey(chars)){
+        counts.put(chars, counts.get(chars) + 1);
+    }else
+    {
+        counts.put(chars,1);
+    }
+}
+for(String chars: characters){
+    if(counts.get(chars)==1){
+        System.debug(chars);
+        break;
+    }
+}
