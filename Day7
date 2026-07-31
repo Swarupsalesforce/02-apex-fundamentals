@@ -1,0 +1,105 @@
+Q-DML
+Account a = new Account();
+a.Name='DML Test 1';
+a.Industry='Technology';
+Insert a;
+System.debug(a.id);
+Q- 5 account insert
+List<Account> accList= new List<Account>();
+for(Integer i=1; i<=5; i++){
+    Account a= new Account();
+    a.Name= 'Bulk Corp '+i;
+    accList.add(a);
+}
+if(!accList.isEmpty()){
+    Insert accList;
+}
+System.debug(Limits.getDmlStatements());
+
+Q-Query the Account named 'DML Test 1', change its Industry to 'Banking', and update it. Confirm in the UI.
+List<Account> acc=[SELECT Id,Name,Industry 
+             FROM Account WHERE Name='DML Test 1' LIMIT 1];
+if(!acc.isEmpty()){
+     acc[0].Industry='Banking';
+ update acc;
+}else{
+    System.debug('No record Found');
+}
+
+Q-Query all Accounts whose Name starts with 'Bulk Corp', set Rating = 'Hot' on each, and update them all with one DML statement.
+
+List<Account> accList=[SELECT Id,Name,Rating 
+                  FROM Account 
+                  WHERE Name LIKE 'Bulk Corp%'];
+for(Account acc:accList){
+    acc.Rating='Hot';
+    accListToUpdate.add(acc);
+}
+
+Q-SF 001-SF-001 — Customer Intelligence Engine. Your first trigger.
+
+Story: As a Customer Success manager, I want customer tiers assigned automatically from annual revenue, so my team stops doing it by hand.
+
+Rules:
+
+AnnualRevenue	Tier
+≥ 10,000,000 (1 crore)	Platinum
+≥ 5,000,000 (50 lakhs)	Gold
+≥ 1,000,000 (10 lakhs)	Silver
+below that	Bronze
+
+Setup (admin work — 2 min, your home turf): create a custom field on Account — Customer_Tier__c, type Text(20) or a picklist with those four values.
+
+Acceptance criteria:
+
+Tier is set when an Account is created
+Tier is recalculated when AnnualRevenue changes
+Works for a single record saved in the UI
+Works for 200 records inserted at once (test this: build a List of 200 Accounts with varying revenues in Anonymous Apex, insert, then query and spot-check the tiers)
+AnnualRevenue is null → decide the rule and comment it (Bronze? leave tier blank? your call — but decide)
+Zero SOQL queries and zero DML statements inside the trigger
+
+ANS
+trigger AccountTrigger on Account (before insert,before update) {
+    for(Account acc: Trigger.new){
+        if(acc.AnnualRevenue==null){
+            acc.Customer_Tier__c='';
+        }else if(acc.AnnualRevenue>=10000000){
+            acc.Customer_Tier__c='Platinum';
+        }else if(acc.AnnualRevenue>=5000000 ){
+            acc.Customer_Tier__c='Gold';
+        }else if(acc.AnnualRevenue>=1000000){
+            acc.Customer_Tier__c='Silver';
+        }else if(acc.AnnualRevenue<1000000 && acc.AnnualRevenue>0){
+            acc.Customer_Tier__c='Bronze';
+        }
+    }
+
+}
+
+Bulk test CODE
+List<Account> accList =new List<Account>();
+for(Integer i=1; i<=200; i++){
+    Account a = new Account();
+        a.Name='Bulk AR Test '+i;
+        a.AnnualRevenue=100000*i;
+        accList.add(a);
+}
+insert accList;
+
+List<Account> accArList =[SELECT Id,Name,AnnualRevenue,Customer_Tier__c
+                       FROM Account WHERE Name LIKE 'Bulk AR Test%'];
+Map<String,Integer> count= new Map<String,Integer>();
+for(Account acc:accArList){
+    if(count.containsKey(acc.Customer_Tier__c)){
+       count.put(acc.Customer_Tier__c,count.get(acc.Customer_Tier__c)+1);
+    }else{
+        count.put(acc.Customer_Tier__c,1);
+    }
+    
+}
+System.debug(count);
+
+
+
+   
