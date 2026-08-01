@@ -93,3 +93,57 @@ for(String chars: characters){
         break;
     }
 }
+Q-7-{2, 7, 11, 15, 3}, target 10 → do any TWO numbers in the list sum to the target? Here: 7+3 → print something like Found: 7 + 3.
+Option-A-
+List<integer> nums= new List<Integer>{2,7,11,15,3};
+Integer target=10;
+Boolean found=false;
+    for(Integer i=0;i<nums.size();i++){
+        for(Integer j=i+1;j<nums.size();j++){
+            if(nums[i]+nums[j]==10){
+                System.debug(nums[i]+' + '+nums[j]+' = 10');
+                found=true;
+                break;
+            }
+        }
+        if(found){
+            break;
+        }
+    }
+if(!found){
+    System.debug('No Pair to sum '+target);
+}
+Option-B-
+Ans
+List<integer> nums= new List<Integer>{2,7,11,15,3};
+Integer target=10;
+Boolean found=false;
+Set<Integer> seen= new Set<Integer>();
+for(Integer n:nums){
+    Integer partner=target-n;
+    if(seen.contains(partner)){ 
+      System.debug(partner+' + '+n+' = '+target);
+      found=true;
+      break;
+    }seen.add(n);
+       }
+if(!found){
+    System.debug('No Pair to sum '+target);
+}
+
+Q-8- Invert map
+List<integer> nums= new List<Integer>{2,7,11,15,3};
+Integer target=10;
+Boolean found=false;
+Set<Integer> seen= new Set<Integer>();
+for(Integer n:nums){
+    Integer partner=target-n;
+    if(seen.contains(partner)){ 
+      System.debug(partner+' + '+n+' = '+target);
+      found=true;
+      break;
+    }seen.add(n);
+       }
+if(!found){
+    System.debug('No Pair to sum '+target);
+}

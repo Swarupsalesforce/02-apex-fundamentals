@@ -1,0 +1,104 @@
+
+Q-The build — AccountTriggerTest. Six test methods. Each one: Arrange → Act → Assert, with a message on every assertion.
+
+Single insert, happy path — revenue 6,000,000 → Gold
+All four tiers — one Account per tier, assert each
+Boundary test — exactly 10,000,000 → Platinum, and 9,999,999 → Gold. This proves your >= ruling.
+Bulk insert — 200 Accounts across all tiers, assert the distribution (counting map, or assert specific records)
+Update path — insert with 500,000 (Bronze), then change revenue to 12,000,000, update, assert Platinum. This tests AC #2, which nothing has tested yet.
+Null revenue — insert an Account with no revenue, assert whatever your documented ruling says should happen
+
+ANS
+
+@isTest
+public class AccountTriggerTest {
+
+    @isTest
+    public static void tierSetOnInsert() {
+        Account acc = new Account (Name = 'Test AR ', AnnualRevenue =6000000);
+    Test.startTest();
+    insert acc;
+    Test.stopTest();
+
+    Account result =[SELECT Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+    Assert.areEqual('Gold', result.Customer_Tier__c, 'Revenue 6M Should Be GOLD');
+
+    }
+    @isTest
+    public static void tierAtExactThreshold(){
+        Account acc1 = new Account (Name = 'Test AR Platinum ', AnnualRevenue =100000000);
+        Account acc2 = new Account (Name = 'Test AR Gold ', AnnualRevenue =6000000);
+        Account acc3 = new Account (Name = 'Test AR Silver', AnnualRevenue =4000000);
+        Account acc4 = new Account (Name = 'Test AR Bronze ', AnnualRevenue =600000);
+        List<Account> accList = new List<Account>{acc1,acc2,acc3,acc4};
+        
+    Test.startTest();
+        insert accList;
+    Test.stopTest();
+        
+        Map<Id,Account> resultsById= new Map<Id,Account>([SELECT Id,Customer_Tier__c FROM Account WHERE Id IN:accList]);
+        Assert.areEqual('Platinum',resultsById.get(acc1.Id).Customer_Tier__c,'Revenue 10m Should be Platinum');
+        Assert.areEqual('Gold',resultsById.get(acc2.Id).Customer_Tier__c,'Revenue 6m Should be Gold');
+        Assert.areEqual('Silver',resultsById.get(acc3.Id).Customer_Tier__c,'Revenue 4m Should be Silver');
+        Assert.areEqual('Bronze',resultsById.get(acc4.Id).Customer_Tier__c,'Revenue 6lakh Should be Bronze');
+    }
+    @isTest
+    public static void tierBoundaryValuesUseGreaterOrEqual(){
+        Account acc1 = new Account (Name = 'Test AR Platinum ', AnnualRevenue =10000000);
+        Account acc2 = new Account (Name = 'Test AR Gold ', AnnualRevenue =9999999);
+        List<Account> accList = new List<Account>{acc1,acc2};
+        
+    Test.startTest();
+        insert accList;
+    Test.stopTest();
+        
+        Map<Id,Account> resultsById= new Map<Id,Account>([SELECT Id,Customer_Tier__c FROM Account WHERE Id IN:accList]);
+        Assert.areEqual('Platinum',resultsById.get(acc1.Id).Customer_Tier__c,'Revenue 10000000 Should be Platinum');
+        Assert.areEqual('Gold',resultsById.get(acc2.Id).Customer_Tier__c,'Revenue 9999999 Should be Gold');
+    }
+    @isTest
+    public static void tierBulkTest(){
+     List<Account> accList = new List<Account>();
+        for(Integer i=1;i<=200;i++){
+            Account acc= new Account();
+            acc.Name='Bulk Tier '+i;
+            acc.AnnualRevenue= 100000*i;
+            accList.add(acc);
+        }
+    Test.startTest();
+        insert accList;
+    Test.stopTest();
+        
+        List<Account> results = [SELECT Customer_Tier__c FROM Account];
+        for(Account a:results){
+            Assert.isNotNull(a.Customer_Tier__c,'Every account must get a tier');
+        }
+        Assert.areEqual(200,results.size(),'All 200 should exist');
+    }
+    @isTest
+    public static void tierSetOnUpdate() {
+        Account acc = new Account (Name = 'Test AR ', AnnualRevenue =500000);
+        insert acc;
+         acc.AnnualRevenue=12000000;
+    Test.startTest();
+    Update acc;
+    Test.stopTest();
+
+    Account result =[SELECT AnnualRevenue, Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+       
+        
+    Assert.areEqual('Platinum', result.Customer_Tier__c, 'Revenue 12000000 Should Be Platinum');
+
+    }
+     @isTest
+    public static void tierNullTest() {
+        Account acc = new Account (Name = 'Test AR null ');
+    Test.startTest();
+    insert acc;
+    Test.stopTest();
+
+    Account result =[SELECT Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+    Assert.isNull( result.Customer_Tier__c, 'Customer Tier Should be NULL');
+
+    }
+}

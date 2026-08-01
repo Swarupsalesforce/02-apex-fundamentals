@@ -1,0 +1,162 @@
+Q- Input: {'rahul@gmail.com', 'priya@yahoo.com', 'amit@GMAIL.com', 'x@yahoo.com', 'broken-email', 'z@gmail.com'}
+Output: gmail.com : 3 and yahoo.com : 2 (a count per domain)
+ANS
+List<String> emails= new List<String>{'rahul@gmail.com', 'priya@yahoo.com', 'amit@GMAIL.com', 'x@yahoo.com', 'broken-email', 'z@gmail.com'};
+Map<String, Integer> domainCount = new Map<String, Integer>();   
+    for(String email:emails){
+        String domain= email.toLowerCase();
+        domain= domain.substringAfter('@');
+        if(String.isBlank(domain)){//This Will Skip Invalid Email
+        continue;
+        }
+        if(domainCount.containsKey(domain)){
+            domainCount.put(domain, domainCount.get(domain)+1);
+        }
+        else{
+            domainCount.put(domain,1);
+        }
+        
+    }
+
+for(String domain: domainCount.keySet()){
+    System.debug(domain+':'+domainCount.get(domain));
+}
+
+Q-2-Input: 'listen' and 'silent' → Output: Anagrams. Input 'hello' and 'world' → Not anagrams.
+
+ANS
+String s1= 'silent';
+String s2= 'listen';
+List<String> chars1= s1.split('');
+List<String> chars2= s2.split('');
+Map<String,Integer> map1= new Map<String,Integer>();
+Map<String,Integer> map2= new Map<String,Integer>();
+if(chars1.size()!=chars2.size()){
+    System.debug('Not Anagrams');
+}
+else{
+    for(String ch: chars1){
+        if(map1.containsKey(ch)){
+            map1.put(ch, map1.get(ch)+1);
+        }else{
+            map1.put(ch,1);
+        }
+    }
+    for(String ch: chars2){
+        if(map2.containsKey(ch)){
+            map2.put(ch, map2.get(ch)+1);
+        }else{
+            map2.put(ch,1);
+        }
+    }
+    if(map1==map2){
+        System.debug('Anagram');
+    }else{
+        System.debug('Not Anagram');
+    }
+    
+}
+
+Q- WordFrequencyCounter, the retention test. Restated:
+
+Input: 'the quick fox jumps over the lazy dog the fox'
+Output: each word with its count, then Most frequent: the (3)
+
+ANS
+String sentence= 'the quick fox jumps over the lazy dog the fox';
+List<String> words= sentence.split(' ');
+Integer bestCount=0;
+String  frequentWord;
+Map<String,Integer> countWord= new Map<String,Integer>();
+for(String word: words){
+    if(countWord.containsKey(word)){
+        countWord.put(word,countWord.get(word)+1);
+    }else{
+        countWord.put(word,1);
+    }
+}
+for(String word:countWord.keySet()){
+    
+    if(countWord.get(word)>bestCount){//In case of Tie as the value is greater than 0 then the first assignment will win
+        bestCount=countWord.get(word);
+        frequentWord= word;
+        
+    }
+    System.debug(word+':'+countWord.get(word));
+}
+System.debug('Most Frequent : '+frequentWord+' '+bestCount);
+
+Q-Input: List<String> names = {'Asha', 'Ravi', 'Amit', 'Meena', 'Raj'}
+Output:
+
+A → (Asha, Amit)
+R → (Ravi, Raj)
+M → (Meena)
+
+ANS
+List<String> names =new List<String>{'Asha', 'Ravi', 'Amit', 'Meena', 'Raj'};
+Map<String,List<String>> namesByAlphabet= new Map<String,List<String>>();
+for(String name: names){
+    String alphabet=name.substring(0,1);
+    if(!namesByAlphabet.containsKey(alphabet)){
+        namesByAlphabet.put(alphabet,new List<String>());
+    }
+        namesByAlphabet.get(alphabet).add(name);
+    
+}System.debug(namesByAlphabet);
+
+Q-Input: List<Integer> nums = {3, 8, 2, 7, 5, 10}
+Output: even → (8, 2, 10) and odd → (3, 7, 5)
+
+ANS
+List<Integer> nums = new List<Integer>{3, 8, 2, 7, 5, 10};
+Map<String,List<Integer>> evenAndOdd= new Map<String,List<Integer>>();
+evenAndOdd.put('Even', new List<Integer>());
+evenAndOdd.put('Odd', new List<Integer>());
+for(Integer num: nums){
+    if(Math.mod(num,2)==0){
+        evenAndOdd.get('Even').add(num);
+    }else{
+        evenAndOdd.get('Odd').add(num);
+    }
+}System.debug(evenAndOdd);
+
+Q-Two parallel Lists (same positions pair up):
+products: {'LicenseA', 'LicenseB', 'LicenseA', 'Support', 'LicenseA'}
+prices: {100, 250, 100, 75, 150}
+Output: LicenseA : 350, LicenseB : 250, Support : 75
+
+ANS
+List<String> products= new List<String>{'LicenseA', 'LicenseB', 'LicenseA', 'Support', 'LicenseA'};
+List<Decimal> prices= new List<Decimal> {100, 250, 100, 75, 150};
+Map<String,Decimal> productPrice = new Map<String,Decimal>();
+if(products.size()==prices.size()){
+    
+    for(Integer i=0; i<products.size(); i++){
+        if (productPrice.containsKey(products[i])) {
+    // Veteran: add current price to existing total
+    Decimal currentTotal = productPrice.get(products[i]);
+    productPrice.put(products[i], currentTotal + prices[i]);
+} else {
+    // Newcomer: initialize with the current price
+    productPrice.put(products[i], prices[i]);
+}
+        
+    }System.debug(productPrice);
+}
+
+Q-Input: 'I love apex and maps'
+Output: 1 → (I), 4 → (love, apex, maps), 3 → (and)
+
+ANS
+String sentence= 'I love apex and maps';
+Map<Integer,List<String>> wordsByLength =new Map<Integer,List<String>>();
+List<String> words= sentence.split(' ');
+System.debug(words);
+for(String word: words){
+    Integer len=word.length();
+    if(!wordsByLength.containsKey(len)){
+        wordsByLength.put(len, new List<String>());
+    }
+     wordsByLength.get(len).add(word);
+} System.debug(wordsByLength);

@@ -1,0 +1,98 @@
+Q-Fetch all Accounts created in the last 30 days. Print how many came back.
+Ans
+List<Account> accList=[SELECT Id,Name FROM Account WHERE CreatedDate=LAST_N_DAYS:30];
+System.debug(accList.size());
+
+Q-For every Contact, print their last name and their Account's name.
+Expected output shape: Sharma works at Acme Corp
+Ans
+List<Contact> contacts=[SELECT Id,Name,Account.Name FROM
+                       Contact WHERE AccountId!=Null];
+If(!contacts.isEmpty()){
+    for(Contact con:contacts){
+    System.debug(con.Name+' Works At '+con.Account.Name);
+    }
+}
+
+Q-For each Account, print its name and how many Contacts it has.
+Expected: Acme Corp has 3 contacts
+Ans
+List<Account> accounts=[SELECT Id,Name,
+                       (SELECT Id,Name FROM Contacts) 
+                        FROM
+                        Account];
+for(Account acc:accounts){
+    System.debug(acc.Name+' has '+acc.contacts.size()+' contacts');
+}
+
+q-Count how many Opportunities exist per StageName.
+Expected: Prospecting: 3, Closed Won: 2, etc.
+Ans
+List<AggregateResult> opsCount= [SELECT StageName, Count(Id) dealCount  FROM Opportunity GROUP BY StageName];
+for(AggregateResult ags:opsCount){
+    System.debug(ags.get('StageName') +' : '+ags.get('dealCount'));
+}
+
+Q-Fetch Accounts in a specific Industry — but the industry value must come from an Apex variable, not typed inside the query.
+Expected: String targetIndustry = 'Technology'; at the top, and the query uses it.
+Ans
+String targetIndustry = 'Technology';
+List<Account> accounts=[SELECT Id,Name,Industry FROM Account WHERE Industry =:targetIndustry];
+System.debug(accounts);
+
+Q-The 10 most recently modified Contacts.
+Expected: 10 contacts, newest first.
+Ans
+List<Contact> contacts=[SELECT Id,Name,LastModifiedDate FROM Contact ORDER BY LastModifiedDate DESC LIMIT 10];
+System.debug(contacts);
+
+Q-All Contacts with no email address. Then print how many there are.
+Expected: a list (possibly small) and a count.
+Ans
+List<Contact> contacts=[SELECT Id FROM Contact WHERE Email=null];
+System.debug(contacts );
+System.debug(contacts.size() );
+
+Q-Grab 2–3 real Account Ids from your org (copy them from any query's results), put them in a Set<Id>, and fetch all their Contacts in ONE query.
+Expected: a list of contacts belonging to those accounts.
+Ans
+List<Account> accounts =[SELECT Id FROM Account WHERE Industry='Energy'];
+Set<Id> accIds= new Set<Id>();
+for(Account acc:accounts){
+    accIds.add(acc.id);
+}
+List<Contact> contacts=[SELECT Id, Name,AccountId FROM Contact WHERE AccountId IN:accIds];
+System.debug(contacts);
+
+
+
+
+
+
+
+
+Q-Part A: loop over 5 Accounts. Inside the loop, run a SOQL query fetching that Account's Contacts. Print each account's contact count. Then after the loop, print System.debug('Queries used: ' + Limits.getQueries());
+
+Part B: rewrite it correctly — ONE query for all contacts (IN :accIds — you already built this in problem 8), grouped with yesterday's compound heartbeat (Map<Id, List<Contact>>), same output. Print the query count again.
+Ans
+List<Account> acc=[SELECT Id,Name FROM Account LIMIT 5];
+Set<Id> accIds=new Set<Id>();
+Map<Id,List<Contact>> contacts= New Map<Id,List<Contact>>();
+for(Account ac:acc){
+    accIds.add(ac.id);
+}
+for(Contact con:[SELECT Id,AccountId FROM Contact WHERE AccountId IN:accIds]){
+    if(!contacts.containsKey(con.AccountId)){
+        contacts.put(con.AccountId,new List<Contact>());
+    }
+    contacts.get(con.AccountId).add(con);
+}
+for(Account a:acc){
+    Integer Count=0;
+    if(contacts.containskey(a.Id)){
+       Count= contacts.get(a.id).size();
+    }
+    System.debug(a.Name + ' has ' + count + ' contacts');
+}
+
+System.debug('Queries used: ' + Limits.getQueries());
