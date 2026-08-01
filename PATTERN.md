@@ -177,7 +177,76 @@ Reviewer's first question on any trigger: *does it loop `Trigger.new`?*
 
 ---
 
-## NOT YET OWNED — arriving on schedule
-Test data factory (Day 9) · handler pattern (Day 10) · collect-Ids-query-once-Map-lookup (Day 11) · rollups (Day 11) · static recursion guard (Day 11) · `addError()` validation (Day 12) · related-record automation (Day 13) · then partial success, upsert by external Id, wrapper classes, selector/service layers, custom metadata–driven logic, async selection, security enforcement, JSON, callouts, platform events, LWC patterns.
+---
 
-*Don't study this section. It arrives when it arrives.*
+## PART 3.5 — TEST CLASSES (Day 9)
+
+### 10. Arrange → Act → Assert
+**Cue:** "I need a test for…" — always this shape, every time.
+```apex
+@isTest
+private class AccountTriggerTest {
+    @isTest
+    static void tierIsGoldAtSixMillion() {
+        // ARRANGE — build data (setup DML goes HERE, outside the brackets)
+        Account acc = TestDataFactory.createAccount('Test Corp', 6000000);
+
+        // ACT — only the operation under test sits inside
+        Test.startTest();
+        insert acc;
+        Test.stopTest();
+
+        // ASSERT — RE-QUERY first, then assert
+        Account result = [SELECT Customer_Tier__c FROM Account WHERE Id = :acc.Id];
+        Assert.areEqual('Gold', result.Customer_Tier__c, 'Revenue 6M should be Gold');
+    }
+}
+```
+**`Assert.areEqual(expected, actual, message)` — expected FIRST.** Backwards order produces a failure message that lies.
+
+### 11. Test data factory
+```apex
+@isTest
+public class TestDataFactory {                          // public — tests call it
+    public static Account createAccount(String name, Decimal revenue) {
+        return new Account(Name = name, AnnualRevenue = revenue);   // RETURN, don't insert
+    }
+    public static List<Account> createAccounts(Integer count, Decimal revenueStep) {
+        List<Account> accs = new List<Account>();
+        for (Integer i = 1; i <= count; i++) {
+            accs.add(new Account(Name = 'Test Acct ' + i, AnnualRevenue = revenueStep * i));
+        }
+        return accs;
+    }
+}
+```
+**Why:** two new required fields on Account = one edit instead of forty.
+**Return, don't insert** — the test needs to control *when* the DML fires (it's often the thing being tested).
+**Parameter names must match reality:** `revenueStep`, not `revenue`, when the body multiplies.
+
+### Reading a method signature
+`public static Account createAccount(String name, Decimal revenue)`
+| Part | Question |
+|---|---|
+| `public` / `private` | who may call it |
+| `static` | callable off the class name, no instance needed |
+| `Account` | what it hands back (`void` = nothing) |
+| `(...)` | what the caller must supply |
+
+### The six tests every trigger needs
+1. single record, happy path · 2. every branch · 3. **exact boundary** (proves `>=` vs `>`) · 4. **bulk 200** · 5. the update path · 6. null / sad path
+
+### Test gotchas
+- **RE-QUERY after DML.** Your in-memory variable doesn't know what the trigger did. `Expected X, Actual null` → suspect a stale record *before* suspecting the code.
+- **No assertion = not a test.** It's a coverage generator that will pass while the logic is wrong.
+- **`Test.startTest()` RESETS governor limits** → setup DML must go before it, or scaffolding eats your budget.
+- **Tests can't see org data — for repeatability, not limits.** Same result in every org, forever. Everything created is rolled back.
+- **Never `SeeAllData=true`.** Never hardcode Ids.
+- **75% is a floor, not a goal.** 80% with sharp assertions beats 100% with none. Test boundaries and sad paths; trust the middles.
+- **Insert a List even when one record would do** — any multi-record insert catches `Trigger.new[0]`.
+- **`Assert`, not `System.assertEquals`** (both work; `Assert` is current).
+- Empty string `''` in a text field is **stored as null** — assign `null` and mean it.
+- In tests, `Account a = [SELECT...]` is *preferred* — you want it to fail loudly. Opposite of production. 
+
+### Casing offenders (Day 9's audit)
+`Update` ×3 → `update` · `Public static` → `public static`
