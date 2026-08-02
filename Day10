@@ -1,0 +1,155 @@
+Learned the Trigger Handler Pattern
+Refactored the Trigger 
+Moved the Logic into handler Class
+Updated the test class to Test the zeo or _ve check also updated to test with new pattern where
+ no DML or No queries required in testing class instead we will use pass the value to handler class.
+ 
+  Updated Trigger Class
+  
+  trigger AccountTrigger on Account (before insert,before update) {
+    AccountTriggerHandler.run();
+}
+
+Trigger handler Class
+
+public class AccountTriggerHandler {
+    public static void run(){
+        if(Trigger.isBefore && Trigger.isInsert){
+            assignTiers(Trigger.new);
+        }
+        if(Trigger.isBefore && Trigger.isUpdate){
+            assignTiers(Trigger.new);
+        }
+        
+    }
+    public static void assignTiers(List<Account> accounts){
+        for(Account acc: accounts){
+        if(acc.AnnualRevenue==null){//Will Handle the Null revenue to Null Tier
+            acc.Customer_Tier__c=null;
+        }else if(acc.AnnualRevenue>=10000000){
+            acc.Customer_Tier__c='Platinum';
+        }else if(acc.AnnualRevenue>=5000000 ){
+            acc.Customer_Tier__c='Gold';
+        }else if(acc.AnnualRevenue>=1000000){
+            acc.Customer_Tier__c='Silver';
+        }else if(acc.AnnualRevenue>0){
+            acc.Customer_Tier__c='Bronze';
+        }else{
+            acc.Customer_Tier__c=null;// O or Negative AR will Update Null Customer Tier.
+        }
+    }
+
+    }
+
+}
+
+Trigger Updated Test Class
+
+@isTest
+public class AccountTriggerTest {
+
+    @isTest
+     static void tierSetOnInsert() {
+        Account acc = TestDataFactory.createAccount ('Test AR ',  6000000);
+    Test.startTest();
+    insert acc;
+    Test.stopTest();
+
+    Account result =[SELECT Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+    Assert.areEqual('Gold', result.Customer_Tier__c, 'Revenue 6M Should Be GOLD');
+
+    }
+    @isTest
+     static void tierSetForAllFourTiers(){
+        Account acc1 = new Account (Name = 'Test AR Platinum ', AnnualRevenue =100000000);
+        Account acc2 = new Account (Name = 'Test AR Gold ', AnnualRevenue =6000000);
+        Account acc3 = new Account (Name = 'Test AR Silver', AnnualRevenue =4000000);
+        Account acc4 = new Account (Name = 'Test AR Bronze ', AnnualRevenue =600000);
+        List<Account> accList = new List<Account>{acc1,acc2,acc3,acc4};
+        
+    Test.startTest();
+        insert accList;
+    Test.stopTest();
+        
+        Map<Id,Account> resultsById= new Map<Id,Account>([SELECT Id,Customer_Tier__c FROM Account WHERE Id IN:accList]);
+        Assert.areEqual('Platinum',resultsById.get(acc1.Id).Customer_Tier__c,'Revenue 100000000 Should be Platinum');
+        Assert.areEqual('Gold',resultsById.get(acc2.Id).Customer_Tier__c,'Revenue 6m Should be Gold');
+        Assert.areEqual('Silver',resultsById.get(acc3.Id).Customer_Tier__c,'Revenue 4m Should be Silver');
+        Assert.areEqual('Bronze',resultsById.get(acc4.Id).Customer_Tier__c,'Revenue 6lakh Should be Bronze');
+    }
+    @isTest
+     static void tierBoundaryValuesUseGreaterOrEqual(){
+        Account acc1 = new Account (Name = 'Test AR Platinum ', AnnualRevenue =10000000);
+        Account acc2 = new Account (Name = 'Test AR Gold ', AnnualRevenue =9999999);
+        List<Account> accList = new List<Account>{acc1,acc2};
+        
+    Test.startTest();
+        insert accList;
+    Test.stopTest();
+        
+        Map<Id,Account> resultsById= new Map<Id,Account>([SELECT Id,Customer_Tier__c FROM Account WHERE Id IN:accList]);
+        Assert.areEqual('Platinum',resultsById.get(acc1.Id).Customer_Tier__c,'Revenue 10000000 Should be Platinum');
+        Assert.areEqual('Gold',resultsById.get(acc2.Id).Customer_Tier__c,'Revenue 9999999 Should be Gold');
+    }
+    @isTest
+     static void tierBulkTest(){
+     List<Account> accLists=TestDataFactory.createAccounts(200,100000);
+    Test.startTest();
+        insert accLists;
+    Test.stopTest();
+        
+        List<Account> results = [SELECT Customer_Tier__c FROM Account];
+        for(Account a:results){
+            Assert.isNotNull(a.Customer_Tier__c,'Every account must get a tier');
+        }
+        Assert.areEqual(200,results.size(),'All 200 should exist');
+    }
+    @isTest
+     static void tierSetOnUpdate() {
+        Account acc = new Account (Name = 'Test AR ', AnnualRevenue =500000);
+        insert acc;
+         acc.AnnualRevenue=12000000;
+    Test.startTest();
+    update acc;
+    Test.stopTest();
+
+    Account result =[SELECT AnnualRevenue, Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+       
+        
+    Assert.areEqual('Platinum', result.Customer_Tier__c, 'Revenue 12000000 Should Be Platinum');
+
+    }
+     @isTest
+     static void tierNullTest() {
+        Account acc = new Account (Name = 'Test AR null ');
+    Test.startTest();
+    insert acc;
+    Test.stopTest();
+
+    Account result =[SELECT Customer_Tier__c  FROM Account WHERE Id=:acc.Id];
+    Assert.isNull( result.Customer_Tier__c, 'Customer Tier Should be NULL');
+
+    }
+    @isTest
+    static void tierZeroAndNegativeTest(){
+    List<Account> accs = new List<Account>();
+        accs.add(new Account(Name = 'A', AnnualRevenue = 0));
+        accs.add(new Account(Name = 'B', AnnualRevenue = -2456));
+    
+
+    AccountTriggerHandler.assignTiers(accs); 
+
+    Assert.isNull(accs[0].Customer_Tier__c, 'Revenue 0 should be Null'); 
+    Assert.isNull(accs[1].Customer_Tier__c, 'Revenue -AR should be Null');     
+    }
+    @isTest
+    static void assignTiersSetsGoldAtSixMillion() {
+    List<Account> accs = new List<Account>{
+        new Account(Name = 'A', AnnualRevenue = 6000000)
+    };
+
+    AccountTriggerHandler.assignTiers(accs);   // no insert, no DML, no re-query
+
+    Assert.areEqual('Gold', accs[0].Customer_Tier__c, 'Revenue 6M should be Gold');
+}
+}

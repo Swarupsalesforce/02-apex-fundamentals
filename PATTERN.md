@@ -81,6 +81,9 @@ for (Contact c : contacts) {
 }
 ```
 **Gotchas:** only the *create* step is conditional; the `add` is unconditional — this is what makes it different from #5 · `get(key)` returns the real List, not a copy, so `.add()` on it works
+**⚠️ A Map has no order.** `keySet()` returns keys in no promised sequence. So "the **first** X that…" must loop the original **List**, never the map:
+The map answers *"how many?"*; only the list knows *"which came first?"* Looping the keySet gives the right answer on your test word and a silent wrong answer later.
+Seed the verdict (`result = 'None'`) **before** the loop; only a discovery overwrites it.
 
 ---
 
@@ -98,6 +101,20 @@ for (Contact c : contacts) {
 **Gotchas:** `Account a = [SELECT...]` throws when zero rows — always List + isEmpty · aggregate results are `AggregateResult`, not your object · you can only modify fields you **queried** · query only what you need
 
 **Never:** SOQL inside a loop. Limit is **100 queries** per transaction.
+
+### Interview shapes (Days 9–10 drills)
+
+| Need | Shape |
+|---|---|
+| Parents that HAVE children | `WHERE Id IN (SELECT AccountId FROM Contact)` — semi-join |
+| Parents with NO children | `WHERE Id NOT IN (SELECT AccountId FROM Contact)` — anti-join |
+| Top N children per parent | `(SELECT Id FROM Cases ORDER BY CreatedDate DESC LIMIT 5)` — subquery takes its **own** ORDER BY + LIMIT |
+| Total per parent, incl. zeros | **impossible in one query — SOQL has no LEFT JOIN.** Aggregate → `Map<Id, Decimal>` → `containsKey ? get : 0` in Apex |
+
+**The fork:** *records* per parent → **subquery**. *A number* per parent → **GROUP BY**.
+**Semi-join trap:** the inner SELECT names the **lookup field** (`AccountId`), never `Id` — comparing Contact Ids to Account Ids matches nothing and throws nothing.
+**Clause order is fixed:** `SELECT → FROM → WHERE → ORDER BY → LIMIT`. Swapping the last two is a compile error, and it's a deliberate interview trap.
+**You CAN filter on a field you didn't SELECT.** The restriction is that you can only *modify* fields you queried.
 
 ---
 
@@ -250,3 +267,65 @@ public class TestDataFactory {                          // public — tests call
 
 ### Casing offenders (Day 9's audit)
 `Update` ×3 → `update` · `Public static` → `public static`
+
+---
+
+## PART 3.6 — TRIGGER HANDLER PATTERN (Day 10)
+
+### 12. Handler + context routing
+**Cue:** any trigger with more than ~5 lines, or a second requirement on the same object
+> **The trigger decides *when*. The handler decides *what*.**
+
+```apex
+// AccountTrigger.trigger — ONE line, forever. Nobody edits this file again.
+trigger AccountTrigger on Account (before insert, before update) {
+    AccountTriggerHandler.run();
+}
+```
+```apex
+public class AccountTriggerHandler {          // public — the trigger calls it
+
+    public static void run() {                 // the ONLY method touching Trigger.*
+        if (Trigger.isBefore && Trigger.isInsert) assignTiers(Trigger.new);
+        if (Trigger.isBefore && Trigger.isUpdate) assignTiers(Trigger.new);
+    }
+
+    public static void assignTiers(List<Account> accounts) {   // pure logic
+        for (Account acc : accounts) { ... }   // no Trigger refs, no DML, no SOQL
+    }
+}
+```
+
+**Why it exists:**
+- trigger logic can't be reused — a Batch job can't fire a trigger, but it *can* call `assignTiers(scope)`
+- a trigger can only be tested through DML; a class method is called directly → **fast unit test, no limits consumed**
+- one-trigger-per-object means one file for *everything* → it must be a switchboard, not a workshop
+- new requirement = new handler method; the trigger never changes
+
+**Rules:**
+- logic methods take **parameters** (`assignTiers(Trigger.new)`), never reach for `Trigger.new` internally — otherwise only a trigger can call them and you've gained nothing
+- the `(before insert, before update)` declaration stays on the **trigger** — Salesforce's contract, the handler can't change it
+- `run()` looks redundant when both branches do the same thing. It won't by Day 13. It's **documentation that executes.**
+- **refactor with tests running after every step** — a failure then names the step that broke it
+
+### The testability dividend
+```apex
+@isTest
+static void assignTiersSetsGoldAtSixMillion() {
+    List<Account> accs = new List<Account>{ new Account(Name='A', AnnualRevenue=6000000) };
+    AccountTriggerHandler.assignTiers(accs);        // no insert, no re-query, no limits
+    Assert.areEqual('Gold', accs[0].Customer_Tier__c, 'Revenue 6M should be Gold');
+}
+```
+Keep **both** kinds: DML tests prove the **wiring**, direct-call tests prove the **logic**.
+
+### static vs instance — the carry-now rule
+**static** when the method just does a job (handlers, factories, utilities) → `ClassName.method(args)`
+**instance** when the object must remember data between calls → `new ClassName()` first
+*(Week 3 makes this formal.)*
+
+### Refactoring gotchas learned the hard way
+- **comments are the first casualty of moving code** — the null ruling didn't survive the move; re-add rulings after any refactor
+- a chain of `else if` with a final *condition* (not a bare `else`) leaves a hole → on **update** an unmatched record keeps its **old value**, silently stale. Bare `else` or explicit assignment.
+- assign `null`, not `''` — the DB stores them identically, so `''` makes a direct-call test assert `''` while a DML test asserts `isNull`: **two tests telling different stories about one ruling**
+
