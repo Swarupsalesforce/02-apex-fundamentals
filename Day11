@@ -1,0 +1,182 @@
+Test Class, Roll Up, LookUp
+
+Updated TestDataFactory
+
+@isTest
+public class TestDataFactory {
+    public static Account createAccount(String name, Decimal revenue) {
+        return new Account(Name = name, AnnualRevenue = revenue);
+    }
+    public static List<Account> createAccounts(Integer count, Decimal revenueStep) {
+        // loop, build, return — don't insert
+        List<Account> accList= new List<Account>();
+        for(Integer i=1;i<=count;i++){
+            Account a = new Account();
+            a.Name='Bulk TestData'+i;
+            a.AnnualRevenue=revenueStep*i;
+            accList.add(a);
+        }
+        return accList;
+    }
+    public static List<Contact> createContacts(Integer count, Id accountId) {
+
+        List<Contact> cons= new List<Contact>();
+
+        for(Integer i=1; i<=count;i++){
+
+            cons.add(new Contact(LastName = 'Test Con ' + i, AccountId = accountId));
+
+        }
+
+        return cons;
+
+    }
+    }
+
+  -->  CONTACT TRIGGER
+
+    trigger ContactTrigger on Contact (after insert,after update,after delete,after undelete) {
+    
+    ContactTriggerHandler.run();
+
+}
+
+--> ContactTriggerHandler
+
+public class ContactTriggerHandler {
+    
+    public static void run(){
+        Set<Id> accountIds= new Set<Id>();
+        if(Trigger.isInsert || Trigger.isUpdate || Trigger.isUndelete){
+            for(Contact con:(List<Contact>)Trigger.new){
+                if(con.AccountId!=null){
+                    accountIds.add(con.AccountId);
+                }
+            }
+        }
+         if(Trigger.isUpdate || Trigger.isDelete){
+            for(Contact con:(List<Contact>)Trigger.old){
+                if(con.AccountId!=null){
+                    accountIds.add(con.AccountId);
+                }
+            }
+        }
+        rollUpContactCount(accountIds);
+    }
+    public static void rollUpContactCount(Set<Id> accountIds){
+        if (accountIds.isEmpty()) 
+            return;
+        Map<Id,Integer> countsByAccount = new Map<Id,Integer>();
+        for(Id accId:accountIds){
+            countsByAccount.put(accId,0);
+        }
+       for(AggregateResult ar:[SELECT AccountId, COUNT(Id) total FROM Contact
+                               WHERE AccountId IN :accountIds GROUP BY AccountId]){
+                                   
+              countsByAccount.put((Id) ar.get('AccountId'), (Integer) ar.get('total'));                     
+       }
+        List<Account> toUpdate= new List<Account>();
+        for(Id accId:countsByAccount.keySet()){
+            toUpdate.add(new Account(Id =accId, Count_Contacts__c=countsByAccount.get(accId))) ;
+        }
+        if(!toUpdate.isEmpty()){
+            update toUpdate;
+        }
+    }
+
+}
+
+--> ContactTriggerHandlerTest
+
+@isTest
+
+public class ContactTriggerHandlerTest {
+
+    @isTest
+
+    static void rollUpOnInsert(){
+
+        Account acc= TestDataFactory.createAccount('RollUp Account', 500000);
+        insert acc;
+        List<Contact> cons=TestDataFactory.createContacts(3,acc.Id);
+
+        Test.startTest();
+        insert cons;
+		Test.stopTest();
+
+        Account result= [SELECT Count_Contacts__c  FROM Account WHERE Id =:acc.Id];
+		Assert.areEqual(3,result.Count_Contacts__c,'The Count of Contacts should be 3');        
+
+    }
+     @isTest
+    static void rollUpOnDelete(){
+
+        Account acc= TestDataFactory.createAccount('RollUp Account', 500000);
+        insert acc;
+        List<Contact> con=TestDataFactory.createContacts(1,acc.Id);
+        insert con;
+        
+        Account afterInsert= [SELECT Count_Contacts__c  FROM Account WHERE Id =:acc.Id];
+		Assert.areEqual(1,afterInsert.Count_Contacts__c,'The Count of Contacts should be 1');
+        
+        Test.startTest();
+        delete con;
+		Test.stopTest();
+        
+
+        Account afterDelete= [SELECT Count_Contacts__c  FROM Account WHERE Id =:acc.Id];
+		Assert.areEqual(0,afterDelete.Count_Contacts__c,'The Count of Contacts should be 0');        
+
+    }
+    @isTest
+    static void rollUpAfterReparenting(){
+
+        List<Account> acc= TestDataFactory.createAccounts(2, 500000);
+        insert acc;
+        List<Contact> con=TestDataFactory.createContacts(1,acc[0].Id);
+        insert con;
+        
+        Account afterInsert= [SELECT Count_Contacts__c  FROM Account WHERE Id =:acc[0].Id];
+		Assert.areEqual(1,afterInsert.Count_Contacts__c,'The Count of Contacts should be 1');
+
+        con[0].AccountId= acc[1].Id;
+        Test.startTest();
+        update con;
+		Test.stopTest();
+
+        Map<Id,Account> accounts= new Map<Id,Account>([SELECT Id,Count_Contacts__c FROM Account WHERE Id IN:acc]);
+		Assert.areEqual(0,accounts.get(acc[0].Id).Count_Contacts__c,'The Count of Contacts should be 0');        
+		Assert.areEqual(1,accounts.get(acc[1].Id).Count_Contacts__c,'The Count of Contacts should be 1');
+    }
+	@isTest
+    static void rollUpBulkTest(){
+
+        List<Account> accs= TestDataFactory.createAccounts(2, 10000);
+        insert accs;
+        List<Contact> cons = TestDataFactory.createContacts(100, accs[0].Id);
+		cons.addAll(TestDataFactory.createContacts(100, accs[1].Id));
+        
+        Test.startTest();
+        insert cons;
+		Test.stopTest();
+
+        Map<Id,Account> accounts= new Map<Id,Account>([SELECT Id,Count_Contacts__c FROM Account WHERE Id IN:accs]);
+		Assert.areEqual(100,accounts.get(accs[0].Id).Count_Contacts__c,'The Count of Contacts should be 100');        
+		Assert.areEqual(100,accounts.get(accs[1].Id).Count_Contacts__c,'The Count of Contacts should be 100');
+    }
+    @isTest
+
+    static void rollUpWithoutAccount(){
+
+        List<Contact> cons=TestDataFactory.createContacts(1,null);
+
+        Test.startTest();
+        insert cons;
+		Test.stopTest();
+
+        Assert.isNotNull(cons[0].Id, 'Contact with no Account should still save');
+
+    }
+
+
+}
