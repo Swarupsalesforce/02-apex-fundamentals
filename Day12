@@ -1,0 +1,125 @@
+ADD Error Method. Stop creation of contact if Account Tier Is Bronze and Copunt contacts isgreater than 5
+
+public class ContactTriggerHandler {
+    
+    public static void run(){
+        Set<Id> accountIds= new Set<Id>();
+        if(Trigger.isBefore && Trigger.isInsert){
+            
+            blockContactsOnFullBronzeAccounts(Trigger.new);
+        }
+        
+        if(Trigger.isAfter && (Trigger.isInsert || Trigger.isUpdate || Trigger.isUndelete)){
+            for(Contact con:(List<Contact>)Trigger.new){
+                if(con.AccountId!=null){
+                    accountIds.add(con.AccountId);
+                }
+            }
+        }
+        if(Trigger.isAfter &&(Trigger.isUpdate || Trigger.isDelete)){
+            for(Contact con:(List<Contact>)Trigger.old){
+                if(con.AccountId!=null){
+                    accountIds.add(con.AccountId);
+                }
+            }
+        }
+        rollUpContactCount(accountIds);
+    }
+    public static void blockContactsOnFullBronzeAccounts(List<Contact> contacts){
+        Map<Id,Integer> incomingCount  = new Map<Id,Integer>();
+        
+        for(Contact con: contacts){
+            if(con.AccountId!=null){
+                if(incomingCount .containsKey(con.AccountId)){
+                    incomingCount .put(con.AccountId,incomingCount .get(con.AccountId)+1);
+                }else{
+                    incomingCount .put(con.AccountId,1);
+                }
+            }
+            
+            
+        }
+        if(incomingCount.keySet().isEmpty())return;
+        Map<Id,Account> accountsById= new Map<Id,Account>([SELECT Id, Customer_Tier__c ,Count_Contacts__c 
+                                                           FROM Account WHERE Id IN:incomingCount.keySet()]);
+        for(Contact c:contacts){
+            Account parent=accountsById.get(c.AccountId);
+            if (parent == null) continue;
+            Integer stored = 0;
+            if (parent.Count_Contacts__c != null) {
+                stored = parent.Count_Contacts__c.intValue();
+            }
+            if(parent.Customer_Tier__c =='Bronze'&& incomingCount.get(parent.Id)+ stored>5){
+                c.addError('Bronze accounts are limited to 5 contacts. '
+                           + 'Upgrade the account tier to add more.');
+            }
+        }
+    }
+    
+    public static void rollUpContactCount(Set<Id> accountIds){
+        if (accountIds.isEmpty()) 
+            return;
+        Map<Id,Integer> countsByAccount = new Map<Id,Integer>();
+        for(Id accId:accountIds){
+            countsByAccount.put(accId,0);
+        }
+        for(AggregateResult ar:[SELECT AccountId, COUNT(Id) total FROM Contact
+                                WHERE AccountId IN :accountIds GROUP BY AccountId]){
+                                    
+                                    countsByAccount.put((Id) ar.get('AccountId'), (Integer) ar.get('total'));                     
+                                }
+        List<Account> toUpdate= new List<Account>();
+        for(Id accId:countsByAccount.keySet()){
+            toUpdate.add(new Account(Id =accId, Count_Contacts__c=countsByAccount.get(accId))) ;
+        }
+        if(!toUpdate.isEmpty()){
+            update toUpdate;
+        }
+    }
+    
+}
+
+
+Prevent negative annual revenue in account
+
+public class AccountTriggerHandler {
+    public static void run(){
+        if(Trigger.isBefore && Trigger.isInsert){
+            validateRevenue(Trigger.new);
+            assignTiers(Trigger.new);
+        }
+        if(Trigger.isBefore && Trigger.isUpdate){
+            validateRevenue(Trigger.new);
+            assignTiers(Trigger.new);
+        }
+        
+    }
+    public static void validateRevenue(List<Account> accounts){
+        
+        for(Account acc:accounts){
+            if(acc.AnnualRevenue!=null && acc.AnnualRevenue<0){
+                acc.AnnualRevenue.addError('Annual revenue cannot be negative.');
+            }
+        }
+        
+    }
+    public static void assignTiers(List<Account> accounts){
+        for(Account acc: accounts){
+        if(acc.AnnualRevenue==null){//Will Handle the Null revenue to Null Tier
+            acc.Customer_Tier__c='';
+        }else if(acc.AnnualRevenue>=10000000){
+            acc.Customer_Tier__c='Platinum';
+        }else if(acc.AnnualRevenue>=5000000 ){
+            acc.Customer_Tier__c='Gold';
+        }else if(acc.AnnualRevenue>=1000000){
+            acc.Customer_Tier__c='Silver';
+        }else if(acc.AnnualRevenue>0){
+            acc.Customer_Tier__c='Bronze';
+        }else{
+            acc.Customer_Tier__c='';// O or Negative AR will Update Null Customer Tier.
+        }
+    }
+
+    }
+
+}
