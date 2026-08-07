@@ -1,0 +1,36 @@
+Instance Varible, Instance Class , Constructor, Instance methods
+
+Instance Class 
+public class AccountHealth {
+    
+    public String accountName;
+    public String tier;
+    public Integer contactCount;
+    
+    public AccountHealth(Account acc){
+        this.accountName= acc.Name;
+        this.tier= acc.Customer_Tier__c;
+        this.contactCount =(acc.Count_Contacts__c == null)
+                            ? 0 : acc.Count_Contacts__c.intValue();
+    }
+    public Boolean isUnderCovered() {          
+        return this.tier == 'Bronze' && this.contactCount < 2;
+    } 
+}
+
+Test Class
+
+@isTest
+private class AccountHealthTest {
+
+    @isTest
+     static void bronzeHealthTest(){
+     Account acc= TestDataFactory.createAccount('Test Bronze Health', 120000);
+         insert acc;
+     Contact con = new Contact(LastName='Test',AccountId=acc.Id);
+         insert con;
+         Account result = [SELECT Name, Customer_Tier__c, Count_Contacts__c FROM Account WHERE Id = :acc.Id];
+         AccountHealth health = new AccountHealth(result);
+         Assert.isTrue(health.isUnderCovered(), 'Bronze account with 1 contact should be under-covered');
+    }
+}
