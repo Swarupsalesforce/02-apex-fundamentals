@@ -1,0 +1,70 @@
+Interface
+
+public interface TierStrategy {
+    String calculateTier(Account acc);
+
+}
+
+MOVED THE ACCOUNTIER LOGIC TO A DIFFERENT CLASS
+
+public class RevenueTierStrategy implements TierStrategy {
+    public static String calculateTier(Account acc){
+        if(acc.AnnualRevenue==null || acc.AnnualRevenue<=0) return null;
+        if(acc.AnnualRevenue>=10000000) return 'Platinum';
+        if(acc.AnnualRevenue>=5000000) return 'Gold';
+        if(acc.AnnualRevenue>=1000000) return 'Silver';
+        return 'Bronze';
+    }
+}
+
+ADDED NEW LOGIC
+
+public class ContactCountTierStrategy implements TierStrategy{
+    public String calculateTier(Account acc){
+        if(acc.Count_Contacts__c==null) return null;
+        if(acc.Count_Contacts__c>=20) return 'Platinum';
+        if(acc.Count_Contacts__c>=15) return 'Gold';
+        if(acc.Count_Contacts__c>=10) return 'Silver';
+        return 'Bronze';
+    }
+
+}
+
+AND CHNAGED THE ACCOUNTTRIGGERHANDLER accountTier Method and added new getStrategyFor method
+
+public class AccountTriggerHandler {
+    public static void run(){
+        if(Trigger.isBefore && Trigger.isInsert){
+            validateRevenue(Trigger.new);
+            assignTiers(Trigger.new);
+        }
+        if(Trigger.isBefore && Trigger.isUpdate){
+            validateRevenue(Trigger.new);
+            assignTiers(Trigger.new);
+        }
+        
+    }
+    public static void validateRevenue(List<Account> accounts){
+        
+        for(Account acc:accounts){
+            if(acc.AnnualRevenue!=null && acc.AnnualRevenue<0){
+                acc.AnnualRevenue.addError('Annual revenue cannot be negative.');
+            }
+        }
+        
+    }
+    public static TierStrategy getStrategyFor(String accountType){
+        if (accountType == 'Partner') {
+            return new ContactCountTierStrategy();
+        }
+        return new RevenueTierStrategy();
+    }
+    public static void assignTiers(List<Account> accounts){
+        for(Account acc: accounts){
+            TierStrategy strategy = getStrategyFor(acc.Type);
+            acc.Customer_Tier__c= strategy.calculateTier(acc);
+        }
+        
+    }
+    
+}
