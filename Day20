@@ -1,0 +1,140 @@
+Inheritance
+
+Contact Trigger
+
+trigger ContactTrigger on Contact (before insert, after insert,after update,after delete,after undelete) {
+    
+    new ContactTriggerHandler().run();
+
+}
+
+ContactTriggerHandler
+
+public class ContactTriggerHandler extends TriggerHandlerBase {
+    
+    protected override void beforeInsert(){
+        blockContactsOnFullBronzeAccounts((List<Contact>)Trigger.new);
+    }
+    
+    
+   protected override void afterInsert() {
+        rollUpContactCount(idsFrom(Trigger.new));
+    }
+
+    protected override void afterUpdate() {
+        Set<Id> ids = idsFrom(Trigger.new);
+        ids.addAll(idsFrom(Trigger.old));       
+        rollUpContactCount(ids);
+    }
+
+    protected override void afterDelete() {
+        rollUpContactCount(idsFrom(Trigger.old));
+    }
+
+    protected override void afterUndelete() {
+        rollUpContactCount(idsFrom(Trigger.new));
+    }
+
+    private Set<Id> idsFrom(List<SObject> records) {
+        Set<Id> ids = new Set<Id>();
+        for (Contact c : (List<Contact>) records) {
+            if (c.AccountId != null) ids.add(c.AccountId);
+        }
+        return ids;
+    }
+    public static void blockContactsOnFullBronzeAccounts(List<Contact> contacts){
+        Map<Id,Integer> incomingCount  = new Map<Id,Integer>();
+        
+        for(Contact con: contacts){
+            if(con.AccountId!=null){
+                if(incomingCount .containsKey(con.AccountId)){
+                    incomingCount .put(con.AccountId,incomingCount .get(con.AccountId)+1);
+                }else{
+                    incomingCount .put(con.AccountId,1);
+                }
+            }
+            
+            
+        }
+        if(incomingCount.keySet().isEmpty())return;
+        Map<Id,Account> accountsById= new Map<Id,Account>([SELECT Id, Customer_Tier__c ,Count_Contacts__c 
+                                                           FROM Account WHERE Id IN:incomingCount.keySet()]);
+        for(Contact c:contacts){
+            Account parent=accountsById.get(c.AccountId);
+            if (parent == null) continue;
+            Integer stored = 0;
+            if (parent.Count_Contacts__c != null) {
+                stored = parent.Count_Contacts__c.intValue();
+            }
+            if(parent.Customer_Tier__c =='Bronze'&& incomingCount.get(parent.Id)+ stored>5){
+                c.addError('Bronze accounts are limited to 5 contacts. '
+                           + 'Upgrade the account tier to add more.');
+            }
+        }
+    }
+    
+    public static void rollUpContactCount(Set<Id> accountIds){
+        if (accountIds.isEmpty()) 
+            return;
+        Map<Id,Integer> countsByAccount = new Map<Id,Integer>();
+        for(Id accId:accountIds){
+            countsByAccount.put(accId,0);
+        }
+        for(AggregateResult ar:[SELECT AccountId, COUNT(Id) total FROM Contact
+                                WHERE AccountId IN :accountIds GROUP BY AccountId]){
+                                    
+                                    countsByAccount.put((Id) ar.get('AccountId'), (Integer) ar.get('total'));                     
+                                }
+        List<Account> toUpdate= new List<Account>();
+        for(Id accId:countsByAccount.keySet()){
+            toUpdate.add(new Account(Id =accId, Count_Contacts__c=countsByAccount.get(accId))) ;
+        }
+        if(!toUpdate.isEmpty()){
+            update toUpdate;
+        }
+    }
+    
+}
+
+Account Trigger
+
+trigger AccountTrigger on Account (before insert,before update) {
+    new AccountTriggerHandler().run();
+}
+
+
+AccountTriggerHandler
+
+public class AccountTriggerHandler extends TriggerHandlerBase {
+    protected override void beforeInsert() {
+        validateRevenue((List<Account>) Trigger.new);
+        assignTiers((List<Account>) Trigger.new);
+    }
+    protected override void beforeUpdate() {
+        validateRevenue((List<Account>) Trigger.new);
+        assignTiers((List<Account>) Trigger.new);
+    }
+    public static void validateRevenue(List<Account> accounts){
+        
+        for(Account acc:accounts){
+            if(acc.AnnualRevenue!=null && acc.AnnualRevenue<0){
+                acc.AnnualRevenue.addError('Annual revenue cannot be negative.');
+            }
+        }
+        
+    }
+    public static TierStrategy getStrategyFor(String accountType){
+        if (accountType == 'Partner') {
+            return new ContactCountTierStrategy();
+        }
+        return new RevenueTierStrategy();
+    }
+    public static void assignTiers(List<Account> accounts){
+        for(Account acc: accounts){
+            TierStrategy strategy = getStrategyFor(acc.Type);
+            acc.Customer_Tier__c= strategy.calculateTier(acc);
+        }
+        
+    }
+    
+}
