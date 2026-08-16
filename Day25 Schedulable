@@ -1,0 +1,50 @@
+Scheduled Apex — the concept, in four lines
+apex
+public class NightlyTierJob implements Schedulable {
+    public void execute(SchedulableContext sc) {
+        Database.executeBatch(new TierRecalculationBatch(), 200);
+    }
+}
+
+That's the whole thing. One interface, one method. It doesn't do work — it starts work at a time. Almost every real Schedulable is three lines that kick off a batch.
+
+Scheduling it:
+
+apex
+System.schedule('Nightly Tier Recalc', '0 0 2 * * ?', new NightlyTierJob());
+
+That cron string is 2am daily. You'll look up cron syntax every single time — nobody memorizes it.
+
+Same shape as everything this week: implement an interface, Salesforce calls your execute. Fourth time in five days.
+
+5. The build
+NightlyTierJob implements Schedulable, three lines
+Schedule it from Anonymous Apex, check Setup → Scheduled Jobs
+One test — System.schedule inside startTest/stopTest, then assert a CronTrigger record exists
+
+CLASS
+public class NightlyTierJob implements Schedulable {
+    public void execute(SchedulableContext sc) {
+        Database.executeBatch(new TierRecalculationBatch(), 200);
+    }
+}
+
+TEST CLASS
+
+@isTest
+public class jobSchedulesSuccessfully {
+@isTest
+static void jobSchedulesSuccessfully() {
+    Test.startTest();
+    String jobId = System.schedule('Test Tier Job', '0 0 2 * * ?', new NightlyTierJob());
+    Test.stopTest();
+
+    CronTrigger ct = [SELECT CronExpression, TimesTriggered FROM CronTrigger WHERE Id = :jobId];
+    Assert.areEqual('0 0 2 * * ?', ct.CronExpression, 'Cron expression should match');
+    Assert.areEqual(0, ct.TimesTriggered, 'Job should not have run yet');
+}
+}
+
+TO SCHEDULE USE THE ANONYMOUS WINDOW ONCE PER ENVIRONMENT
+
+With THis --> System.schedule('Nightly Tier Recalc', '0 0 2 * * ?', new NightlyTierJob());
