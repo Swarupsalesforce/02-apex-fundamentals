@@ -82,3 +82,6 @@ SOQL fails **first**. Check for the query before the DML.
 
 > **The best code is the code you didn't write.**
 > Master-detail → roll-up summary. Fields on the record itself → validation rule. Apex only when it needs *other records'* data, or fires on delete.
+
+50,000 = max rows from a normal query (QueryLocator bypasses this).
+10,000 = max records per single DML statement. Don't swap them.
